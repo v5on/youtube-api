@@ -176,6 +176,70 @@ def get_download_link():
             'success': False
         }), 500
 
+@app.route('/video/<video_id>')
+def video_preview(video_id):
+    """Video preview page with download options"""
+    try:
+        # Construct YouTube URL from video ID
+        url = f"https://www.youtube.com/watch?v={video_id}"
+        
+        # Get video information
+        video_info = youtube_service.get_video_info(url)
+        
+        return render_template('video_preview.html', video=video_info, video_id=video_id)
+        
+    except Exception as e:
+        logging.error(f"Error loading video preview: {e}")
+        return render_template('error.html', error=str(e)), 500
+
+@app.route('/api/create-preview-link', methods=['POST'])
+def create_preview_link():
+    """Create a preview link for YouTube video"""
+    try:
+        data = request.get_json()
+        if not data or 'url' not in data:
+            return jsonify({
+                'error': 'Missing required parameter: url',
+                'success': False
+            }), 400
+        
+        url = data['url'].strip()
+        
+        # Validate URL
+        if not youtube_service.is_valid_youtube_url(url):
+            return jsonify({
+                'error': 'Invalid YouTube URL',
+                'success': False
+            }), 400
+        
+        # Extract video ID from URL
+        import re
+        video_id_match = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11}).*', url)
+        if not video_id_match:
+            return jsonify({
+                'error': 'Could not extract video ID from URL',
+                'success': False
+            }), 400
+        
+        video_id = video_id_match.group(1)
+        
+        # Create preview URL
+        preview_url = request.url_root + f'video/{video_id}'
+        
+        return jsonify({
+            'success': True,
+            'preview_url': preview_url,
+            'video_id': video_id,
+            'original_url': url
+        })
+        
+    except Exception as e:
+        logging.error(f"Error creating preview link: {e}")
+        return jsonify({
+            'error': str(e),
+            'success': False
+        }), 500
+
 @app.route('/health')
 def health_check():
     """Health check endpoint"""

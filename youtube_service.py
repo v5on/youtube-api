@@ -57,6 +57,8 @@ class YouTubeService:
                         'ext': fmt.get('ext', ''),
                         'quality': fmt.get('quality', 0),
                         'resolution': fmt.get('resolution', ''),
+                        'height': fmt.get('height', 0),
+                        'width': fmt.get('width', 0),
                         'fps': fmt.get('fps', 0),
                         'vcodec': fmt.get('vcodec', ''),
                         'acodec': fmt.get('acodec', ''),
@@ -70,18 +72,22 @@ class YouTubeService:
                     }
                     
                     # Categorize formats
-                    if fmt.get('vcodec') != 'none' and fmt.get('acodec') != 'none':
-                        # Video with audio
-                        if fmt.get('ext') == 'mp4':
+                    vcodec = fmt.get('vcodec', 'none')
+                    acodec = fmt.get('acodec', 'none')
+                    ext = fmt.get('ext', '')
+                    
+                    if vcodec != 'none' and acodec != 'none':
+                        # Video with audio - prefer mp4
+                        if ext in ['mp4', 'webm', 'mkv']:
                             video_formats.append(format_info)
-                    elif fmt.get('vcodec') != 'none' and fmt.get('acodec') == 'none':
-                        # Video only
-                        if fmt.get('ext') == 'mp4':
+                    elif vcodec != 'none' and acodec == 'none':
+                        # Video only - can be combined later
+                        if ext in ['mp4', 'webm'] and fmt.get('height', 0) > 0:
                             format_info['type'] = 'video_only'
                             video_formats.append(format_info)
-                    elif fmt.get('vcodec') == 'none' and fmt.get('acodec') != 'none':
+                    elif vcodec == 'none' and acodec != 'none':
                         # Audio only
-                        if fmt.get('ext') in ['mp3', 'm4a', 'webm']:
+                        if ext in ['mp3', 'm4a', 'webm', 'ogg']:
                             format_info['type'] = 'audio_only'
                             audio_formats.append(format_info)
                 
@@ -112,6 +118,18 @@ class YouTubeService:
         
         for fmt in formats:
             height = fmt.get('height', 0)
+            # If height is not available, try to parse from resolution string
+            if height == 0:
+                resolution = fmt.get('resolution', '')
+                if 'x' in resolution:
+                    try:
+                        height = int(resolution.split('x')[1])
+                    except:
+                        height = 0
+            
+            if height == 0:
+                continue
+                
             if height <= 144:
                 quality_map['144p'].append(fmt)
             elif height <= 240:

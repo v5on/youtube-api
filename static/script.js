@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle action change
     actionSelect.addEventListener('change', function() {
-        if (this.value === 'info') {
+        if (this.value === 'info' || this.value === 'preview-link') {
             qualityGroup.style.display = 'none';
             audioOnlyCheckbox.checked = false;
         } else {
@@ -68,6 +68,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 endpoint = '/api/download-link';
                 requestBody.quality = quality;
                 requestBody.audio_only = audioOnly;
+            } else if (action === 'preview-link') {
+                endpoint = '/api/create-preview-link';
             }
 
             const response = await fetch(endpoint, {

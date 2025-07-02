@@ -159,6 +159,44 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Create Preview Link Endpoint -->
+                <div class="card endpoint-card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <span class="badge bg-warning me-2">POST</span>
+                            /api/create-preview-link
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Description:</strong> Create a preview page link where users can watch the video first and then decide to download.</p>
+                        
+                        <h6>Request Body:</h6>
+                        <div class="code-block">
+{
+    "url": "https://www.youtube.com/watch?v=VIDEO_ID"
+}
+                        </div>
+                        
+                        <h6>Response:</h6>
+                        <div class="code-block">
+{
+    "success": true,
+    "preview_url": "https://your-domain.com/video/VIDEO_ID",
+    "video_id": "VIDEO_ID",
+    "original_url": "https://www.youtube.com/watch?v=VIDEO_ID"
+}
+                        </div>
+                        
+                        <h6>Preview Page Features:</h6>
+                        <ul class="small">
+                            <li>Embedded YouTube video player</li>
+                            <li>Video metadata (title, channel, views, likes)</li>
+                            <li>Multiple download options with different qualities</li>
+                            <li>Direct download buttons and link generation</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -183,6 +221,7 @@
                         <select class="form-select" id="action">
                             <option value="info">Get Video Info</option>
                             <option value="download-link">Get Download Link</option>
+                            <option value="preview-link">Create Preview Link</option>
                         </select>
                     </div>
                     
