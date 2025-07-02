@@ -54,7 +54,6 @@ class YouTubeService:
                 
                 # Target qualities we want
                 target_video_heights = [360, 480, 720, 1080]
-                found_audio = False
                 
                 for fmt in formats:
                     vcodec = fmt.get('vcodec', 'none')
@@ -62,36 +61,48 @@ class YouTubeService:
                     ext = fmt.get('ext', '')
                     height = fmt.get('height', 0)
                     abr = fmt.get('abr', 0)
+                    format_id = fmt.get('format_id', '')
                     
-                    # Audio format - only 128kbps
-                    if vcodec == 'none' and acodec != 'none' and not found_audio:
-                        if ext in ['webm', 'm4a'] and 120 <= abr <= 135:  # Around 128kbps
+                    # Audio format - 128kbps (look for common audio format IDs)
+                    if vcodec == 'none' and acodec != 'none':
+                        # Common 128kbps format IDs: 250 (webm), 140 (m4a)
+                        if format_id in ['250', '140'] or (120 <= abr <= 135):
                             audio_format = {
                                 'ext': 'mp3',
                                 'filesize': fmt.get('filesize', 0),
-                                'format_id': fmt.get('format_id', ''),
+                                'format_id': format_id,
                                 'format_note': '128kbps',
                                 'type': 'audio_only',
                                 'url': fmt.get('url', '')
                             }
-                            video_info['formats']['audio'].append(audio_format)
-                            found_audio = True
+                            # Only add one audio format
+                            if not video_info['formats']['audio']:
+                                video_info['formats']['audio'].append(audio_format)
                     
-                    # Video formats - only specific qualities
-                    elif vcodec != 'none' and acodec == 'none' and ext == 'mp4':
-                        if height in target_video_heights:
+                    # Video formats - only specific qualities (video only, no audio)
+                    elif vcodec != 'none' and acodec == 'none':
+                        if height in target_video_heights and ext == 'mp4':
                             video_format = {
                                 'ext': 'mp4',
                                 'filesize': fmt.get('filesize', 0),
-                                'format_id': fmt.get('format_id', ''),
+                                'format_id': format_id,
                                 'format_note': f'{height}p',
                                 'type': 'video_only',
                                 'url': fmt.get('url', '')
                             }
                             video_info['formats']['video'].append(video_format)
                 
-                # Sort video formats by quality (lowest to highest)
-                video_info['formats']['video'].sort(key=lambda x: int(x['format_note'].replace('p', '')))
+                # Remove duplicates and sort video formats by quality
+                seen_heights = set()
+                unique_video_formats = []
+                for fmt in video_info['formats']['video']:
+                    height = fmt['format_note']
+                    if height not in seen_heights:
+                        seen_heights.add(height)
+                        unique_video_formats.append(fmt)
+                
+                video_info['formats']['video'] = sorted(unique_video_formats, 
+                    key=lambda x: int(x['format_note'].replace('p', '')))
                 
                 return video_info
                 
