@@ -60,24 +60,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             let endpoint = '';
-            let requestBody = { url: url };
-
+            let queryParams = new URLSearchParams({ url: url });
+            
             if (action === 'info') {
                 endpoint = '/api/video-info';
             } else if (action === 'download-link') {
                 endpoint = '/api/download-link';
-                requestBody.quality = quality;
-                requestBody.audio_only = audioOnly;
+                queryParams.append('quality', quality);
+                queryParams.append('audio_only', audioOnly);
             } else if (action === 'preview-link') {
                 endpoint = '/api/create-preview-link';
             }
 
-            const response = await fetch(endpoint, {
-                method: 'POST',
+            const response = await fetch(`${endpoint}?${queryParams}`, {
+                method: 'GET',
                 headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody)
+                    'Accept': 'application/json',
+                }
             });
 
             const data = await response.json();

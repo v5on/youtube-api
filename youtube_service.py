@@ -76,18 +76,15 @@ class YouTubeService:
                     acodec = fmt.get('acodec', 'none')
                     ext = fmt.get('ext', '')
                     
+                    # Only include video+audio combined formats (no video-only formats)
                     if vcodec != 'none' and acodec != 'none':
-                        # Video with audio - prefer mp4
-                        if ext in ['mp4', 'webm', 'mkv']:
-                            video_formats.append(format_info)
-                    elif vcodec != 'none' and acodec == 'none':
-                        # Video only - can be combined later
-                        if ext in ['mp4', 'webm'] and fmt.get('height', 0) > 0:
-                            format_info['type'] = 'video_only'
+                        # Video with audio combined - this is what we want
+                        if ext in ['mp4', 'webm', 'mkv'] and fmt.get('height', 0) > 0:
+                            format_info['type'] = 'video_with_audio'
                             video_formats.append(format_info)
                     elif vcodec == 'none' and acodec != 'none':
-                        # Audio only
-                        if ext in ['mp3', 'm4a', 'webm', 'ogg']:
+                        # Audio only formats
+                        if ext in ['mp3', 'm4a', 'webm', 'ogg'] and fmt.get('abr', 0) > 0:
                             format_info['type'] = 'audio_only'
                             audio_formats.append(format_info)
                 

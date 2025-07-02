@@ -88,4 +88,8 @@ Preferred communication style: Simple, everyday language.
 ## Changelog
 
 Changelog:
-- July 02, 2025. Initial setup
+- July 02, 2025. Initial setup with YouTube Downloader API
+- July 02, 2025. Updated all API endpoints to use GET requests instead of POST
+- July 02, 2025. Modified video format filtering to only include video+audio combined formats and audio-only formats (removed video-only formats)
+- July 02, 2025. Added video preview page functionality with embedded YouTube player
+- July 02, 2025. Updated API documentation to reflect GET method usage with query parameters
