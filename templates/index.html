@@ -60,18 +60,16 @@
                 <div class="card endpoint-card mb-4">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <span class="badge bg-primary me-2">POST</span>
+                            <span class="badge bg-primary me-2">GET</span>
                             /api/video-info
                         </h5>
                     </div>
                     <div class="card-body">
                         <p><strong>Description:</strong> Get comprehensive video information and available formats.</p>
                         
-                        <h6>Request Body:</h6>
+                        <h6>Request Parameters:</h6>
                         <div class="code-block">
-{
-    "url": "https://www.youtube.com/watch?v=VIDEO_ID"
-}
+GET /api/video-info?url=https://www.youtube.com/watch?v=VIDEO_ID
                         </div>
                         
                         <h6>Response:</h6>
@@ -105,21 +103,22 @@
                 <div class="card endpoint-card mb-4">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <span class="badge bg-success me-2">POST</span>
+                            <span class="badge bg-success me-2">GET</span>
                             /api/download
                         </h5>
                     </div>
                     <div class="card-body">
                         <p><strong>Description:</strong> Download video or audio file directly.</p>
                         
-                        <h6>Request Body:</h6>
+                        <h6>Request Parameters:</h6>
                         <div class="code-block">
-{
-    "url": "https://www.youtube.com/watch?v=VIDEO_ID",
-    "quality": "720p",           // optional: 144p, 240p, 360p, 480p, 720p, 1080p
-    "audio_only": false,         // optional: true for audio only
-    "format_id": "FORMAT_ID"     // optional: specific format ID
-}
+GET /api/download?url=VIDEO_URL&quality=720p&audio_only=false&format_id=FORMAT_ID
+
+Parameters:
+- url: YouTube video URL (required)
+- quality: 144p, 240p, 360p, 480p, 720p, 1080p (optional, default: 720p)
+- audio_only: true/false (optional, default: false)
+- format_id: specific format ID (optional)
                         </div>
                         
                         <h6>Response:</h6>
@@ -131,20 +130,21 @@
                 <div class="card endpoint-card mb-4">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <span class="badge bg-info me-2">POST</span>
+                            <span class="badge bg-info me-2">GET</span>
                             /api/download-link
                         </h5>
                     </div>
                     <div class="card-body">
                         <p><strong>Description:</strong> Get direct download URL for video or audio.</p>
                         
-                        <h6>Request Body:</h6>
+                        <h6>Request Parameters:</h6>
                         <div class="code-block">
-{
-    "url": "https://www.youtube.com/watch?v=VIDEO_ID",
-    "quality": "720p",           // optional
-    "audio_only": false          // optional
-}
+GET /api/download-link?url=VIDEO_URL&quality=720p&audio_only=false
+
+Parameters:
+- url: YouTube video URL (required)
+- quality: 144p, 240p, 360p, 480p, 720p, 1080p (optional, default: 720p)
+- audio_only: true/false (optional, default: false)
                         </div>
                         
                         <h6>Response:</h6>
@@ -164,18 +164,19 @@
                 <div class="card endpoint-card mb-4">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <span class="badge bg-warning me-2">POST</span>
+                            <span class="badge bg-warning me-2">GET</span>
                             /api/create-preview-link
                         </h5>
                     </div>
                     <div class="card-body">
                         <p><strong>Description:</strong> Create a preview page link where users can watch the video first and then decide to download.</p>
                         
-                        <h6>Request Body:</h6>
+                        <h6>Request Parameters:</h6>
                         <div class="code-block">
-{
-    "url": "https://www.youtube.com/watch?v=VIDEO_ID"
-}
+GET /api/create-preview-link?url=https://www.youtube.com/watch?v=VIDEO_ID
+
+Parameters:
+- url: YouTube video URL (required)
                         </div>
                         
                         <h6>Response:</h6>

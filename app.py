@@ -41,18 +41,18 @@ def index():
     """Main page with API documentation and testing interface"""
     return render_template('index.html')
 
-@app.route('/api/video-info', methods=['POST'])
+@app.route('/api/video-info')
 def get_video_info():
     """Get detailed video information including available formats"""
     try:
-        data = request.get_json()
-        if not data or 'url' not in data:
+        url = request.args.get('url')
+        if not url:
             return jsonify({
                 'error': 'Missing required parameter: url',
                 'success': False
             }), 400
         
-        url = data['url'].strip()
+        url = url.strip()
         
         # Validate URL
         if not youtube_service.is_valid_youtube_url(url):
@@ -76,21 +76,21 @@ def get_video_info():
             'success': False
         }), 500
 
-@app.route('/api/download', methods=['POST'])
+@app.route('/api/download')
 def download_video():
     """Download video or audio in specified format"""
     try:
-        data = request.get_json()
-        if not data or 'url' not in data:
+        url = request.args.get('url')
+        if not url:
             return jsonify({
                 'error': 'Missing required parameter: url',
                 'success': False
             }), 400
         
-        url = data['url'].strip()
-        format_id = data.get('format_id')
-        audio_only = data.get('audio_only', False)
-        quality = data.get('quality', '720p')
+        url = url.strip()
+        format_id = request.args.get('format_id')
+        audio_only = request.args.get('audio_only', 'false').lower() == 'true'
+        quality = request.args.get('quality', '720p')
         
         # Validate URL
         if not youtube_service.is_valid_youtube_url(url):
@@ -130,21 +130,21 @@ def download_video():
             'success': False
         }), 500
 
-@app.route('/api/download-link', methods=['POST'])
+@app.route('/api/download-link')
 def get_download_link():
     """Get temporary download link for video/audio"""
     try:
-        data = request.get_json()
-        if not data or 'url' not in data:
+        url = request.args.get('url')
+        if not url:
             return jsonify({
                 'error': 'Missing required parameter: url',
                 'success': False
             }), 400
         
-        url = data['url'].strip()
-        format_id = data.get('format_id')
-        audio_only = data.get('audio_only', False)
-        quality = data.get('quality', '720p')
+        url = url.strip()
+        format_id = request.args.get('format_id')
+        audio_only = request.args.get('audio_only', 'false').lower() == 'true'
+        quality = request.args.get('quality', '720p')
         
         # Validate URL
         if not youtube_service.is_valid_youtube_url(url):
@@ -192,18 +192,18 @@ def video_preview(video_id):
         logging.error(f"Error loading video preview: {e}")
         return render_template('error.html', error=str(e)), 500
 
-@app.route('/api/create-preview-link', methods=['POST'])
+@app.route('/api/create-preview-link')
 def create_preview_link():
     """Create a preview link for YouTube video"""
     try:
-        data = request.get_json()
-        if not data or 'url' not in data:
+        url = request.args.get('url')
+        if not url:
             return jsonify({
                 'error': 'Missing required parameter: url',
                 'success': False
             }), 400
         
-        url = data['url'].strip()
+        url = url.strip()
         
         # Validate URL
         if not youtube_service.is_valid_youtube_url(url):

@@ -85,7 +85,44 @@ This is a Flask-based REST API for downloading YouTube videos and extracting vid
 
 Preferred communication style: Simple, everyday language.
 
+## Deployment Configuration
+
+### Supported Platforms
+- **Railway.com**: Uses `railway.json` configuration with Nixpacks builder and automatic health checks
+- **Vercel.com**: Uses `vercel.json` configuration for serverless deployment
+- **Local Development**: Standard Flask development server on port 5000
+
+### Deployment Files
+- `Procfile`: Railway/Heroku deployment configuration
+- `vercel.json`: Vercel serverless configuration 
+- `railway.json`: Railway platform-specific settings
+- `runtime.txt`: Python version specification
+- `README.md`: Comprehensive deployment and usage documentation
+
+### API Changes
+- All endpoints converted from POST to GET requests for better caching and simpler integration
+- URL parameters used instead of JSON request bodies
+- Maintained backward compatibility in response formats
+
+## Recent Changes
+
+### July 02, 2025 - Major Update: GET API & Deployment Ready
+- ✅ Converted all API endpoints from POST to GET requests
+- ✅ Updated frontend JavaScript to use GET requests with URL parameters
+- ✅ Created deployment configurations for Railway.com and Vercel.com
+- ✅ Added comprehensive README with deployment instructions
+- ✅ Enhanced video preview functionality with embedded YouTube player
+- ✅ Implemented preview link generation for better user experience
+
+### API Endpoint Updates
+- `GET /api/video-info?url=VIDEO_URL` - Get video metadata and formats
+- `GET /api/download?url=VIDEO_URL&quality=720p&audio_only=false` - Direct download
+- `GET /api/download-link?url=VIDEO_URL&quality=720p&audio_only=false` - Get download URL
+- `GET /api/create-preview-link?url=VIDEO_URL` - Create preview page
+- `GET /video/{VIDEO_ID}` - Video preview page with embedded player
+
 ## Changelog
 
 Changelog:
 - July 02, 2025. Initial setup
+- July 02, 2025. Converted to GET APIs and added deployment configurations

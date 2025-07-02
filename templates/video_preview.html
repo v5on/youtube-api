@@ -182,16 +182,17 @@ document.addEventListener('DOMContentLoaded', function() {
             this.disabled = true;
             
             try {
-                const response = await fetch('/api/download', {
-                    method: 'POST',
+                const params = new URLSearchParams({
+                    url: encodeURIComponent(url),
+                    quality: quality,
+                    audio_only: audioOnly
+                });
+                
+                const response = await fetch(`/api/download?${params.toString()}`, {
+                    method: 'GET',
                     headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        url: url,
-                        quality: quality,
-                        audio_only: audioOnly
-                    })
+                        'Accept': 'application/octet-stream',
+                    }
                 });
                 
                 if (response.ok) {
@@ -233,16 +234,17 @@ document.addEventListener('DOMContentLoaded', function() {
         downloadLinkDiv.style.display = 'none';
         
         try {
-            const response = await fetch('/api/download-link', {
-                method: 'POST',
+            const params = new URLSearchParams({
+                url: encodeURIComponent(url),
+                quality: quality,
+                audio_only: audioOnly
+            });
+            
+            const response = await fetch(`/api/download-link?${params.toString()}`, {
+                method: 'GET',
                 headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    url: url,
-                    quality: quality,
-                    audio_only: audioOnly
-                })
+                    'Accept': 'application/json',
+                }
             });
             
             const data = await response.json();
