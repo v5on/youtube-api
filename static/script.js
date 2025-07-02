@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', function() {
     const testForm = document.getElementById('testForm');
     const loadingSpinner = document.getElementById('loadingSpinner');
@@ -6,6 +7,48 @@ document.addEventListener('DOMContentLoaded', function() {
     const actionSelect = document.getElementById('action');
     const qualityGroup = document.getElementById('qualityGroup');
     const audioOnlyCheckbox = document.getElementById('audioOnly');
+    const videoUrlInput = document.getElementById('videoUrl');
+    const useExampleUrlBtn = document.getElementById('useExampleUrl');
+    const copyResponseBtn = document.getElementById('copyResponse');
+    
+    // Quick test buttons
+    const testVideoInfoBtn = document.getElementById('testVideoInfo');
+    const testDownloadLinkBtn = document.getElementById('testDownloadLink');
+    const testPreviewLinkBtn = document.getElementById('testPreviewLink');
+    
+    // Response time tracking
+    let requestStartTime = 0;
+
+    // Example URL
+    const exampleUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+
+    // Use example URL
+    useExampleUrlBtn.addEventListener('click', function() {
+        videoUrlInput.value = exampleUrl;
+        videoUrlInput.focus();
+    });
+
+    // Quick test buttons
+    testVideoInfoBtn.addEventListener('click', function() {
+        videoUrlInput.value = exampleUrl;
+        actionSelect.value = 'info';
+        audioOnlyCheckbox.checked = false;
+        testForm.dispatchEvent(new Event('submit'));
+    });
+
+    testDownloadLinkBtn.addEventListener('click', function() {
+        videoUrlInput.value = exampleUrl;
+        actionSelect.value = 'download-link';
+        document.getElementById('quality').value = '720p';
+        audioOnlyCheckbox.checked = false;
+        testForm.dispatchEvent(new Event('submit'));
+    });
+
+    testPreviewLinkBtn.addEventListener('click', function() {
+        videoUrlInput.value = exampleUrl;
+        actionSelect.value = 'preview-link';
+        testForm.dispatchEvent(new Event('submit'));
+    });
 
     // Handle action change
     actionSelect.addEventListener('change', function() {
@@ -39,91 +82,129 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Copy response functionality
+    copyResponseBtn.addEventListener('click', async function() {
+        try {
+            const responseText = responseContent.textContent;
+            await navigator.clipboard.writeText(responseText);
+            
+            // Show feedback
+            const originalText = copyResponseBtn.innerHTML;
+            copyResponseBtn.innerHTML = '<i class="fas fa-check me-1"></i> Copied!';
+            copyResponseBtn.classList.add('btn-success');
+            copyResponseBtn.classList.remove('btn-outline-secondary');
+            
+            setTimeout(() => {
+                copyResponseBtn.innerHTML = originalText;
+                copyResponseBtn.classList.remove('btn-success');
+                copyResponseBtn.classList.add('btn-outline-secondary');
+            }, 2000);
+        } catch (err) {
+            console.log('Failed to copy: ', err);
+            
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = responseContent.textContent;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+        }
+    });
+
     // Handle form submission
     testForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        const url = document.getElementById('videoUrl').value;
-        const action = document.getElementById('action').value;
+        const url = videoUrlInput.value.trim();
+        const action = actionSelect.value;
         const quality = document.getElementById('quality').value;
-        const audioOnly = document.getElementById('audioOnly').checked;
+        const audioOnly = audioOnlyCheckbox.checked;
         
         if (!url) {
             alert('Please enter a YouTube URL');
             return;
         }
 
-        // Show loading state
+        // Show loading
         loadingSpinner.classList.remove('d-none');
         responseCard.style.display = 'none';
-        testForm.classList.add('loading');
-
+        
+        // Track request time
+        requestStartTime = Date.now();
+        
         try {
-            let endpoint = '';
-            let params = new URLSearchParams({ url: encodeURIComponent(url) });
-
+            let apiUrl;
+            const params = new URLSearchParams({ url });
+            
             if (action === 'info') {
-                endpoint = '/api/video-info';
+                apiUrl = '/api/video-info';
             } else if (action === 'download-link') {
-                endpoint = '/api/download-link';
+                apiUrl = '/api/download-link';
                 params.append('quality', quality);
-                params.append('audio_only', audioOnly);
+                if (audioOnly) params.append('audio_only', 'true');
             } else if (action === 'preview-link') {
-                endpoint = '/api/create-preview-link';
+                apiUrl = '/api/create-preview-link';
             }
-
-            const response = await fetch(`${endpoint}?${params.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                }
-            });
-
+            
+            const response = await fetch(`${apiUrl}?${params}`);
             const data = await response.json();
             
-            // Display response
-            responseContent.textContent = JSON.stringify(data, null, 2);
-            responseCard.style.display = 'block';
+            // Calculate response time
+            const responseTime = Date.now() - requestStartTime;
+            document.getElementById('responseTime').textContent = responseTime;
+            document.getElementById('lastTest').textContent = new Date().toLocaleTimeString();
             
-            // Scroll to response
-            responseCard.scrollIntoView({ behavior: 'smooth' });
+            // Display response
+            displayResponse(data, response.status);
+            
+            // If it's a preview link, offer to open it
+            if (action === 'preview-link' && data.success) {
+                const openPreview = confirm('Preview link created! Would you like to open it in a new tab?');
+                if (openPreview) {
+                    window.open(data.preview_url, '_blank');
+                }
+            }
             
         } catch (error) {
-            console.error('Error:', error);
-            responseContent.textContent = JSON.stringify({
-                error: 'Failed to make request: ' + error.message,
-                success: false
-            }, null, 2);
-            responseCard.style.display = 'block';
+            const responseTime = Date.now() - requestStartTime;
+            document.getElementById('responseTime').textContent = responseTime;
+            
+            displayResponse({
+                success: false,
+                error: `Request failed: ${error.message}`
+            }, 500);
         } finally {
-            // Hide loading state
             loadingSpinner.classList.add('d-none');
-            testForm.classList.remove('loading');
         }
     });
 
-    // Add copy to clipboard functionality
-    responseContent.addEventListener('click', function() {
-        navigator.clipboard.writeText(this.textContent).then(function() {
-            // Show temporary success message
-            const originalText = responseContent.textContent;
-            responseContent.textContent = 'Response copied to clipboard!';
-            setTimeout(() => {
-                responseContent.textContent = originalText;
-            }, 2000);
-        }).catch(function(err) {
-            console.error('Failed to copy: ', err);
-        });
-    });
+    function displayResponse(data, status) {
+        // Format JSON with syntax highlighting
+        const formattedJson = JSON.stringify(data, null, 2);
+        
+        // Add status indicator
+        const statusClass = status < 400 ? 'text-success' : 'text-danger';
+        const statusIcon = status < 400 ? 'check-circle' : 'exclamation-triangle';
+        
+        responseContent.innerHTML = `
+            <div class="mb-2">
+                <span class="badge bg-secondary">HTTP ${status}</span>
+                <i class="fas fa-${statusIcon} ${statusClass} ms-2"></i>
+            </div>
+            <pre class="json-syntax">${escapeHtml(formattedJson)}</pre>
+        `;
+        
+        responseCard.style.display = 'block';
+        responseCard.scrollIntoView({ behavior: 'smooth' });
+    }
 
-    // Add example URL for testing
-    const exampleButton = document.createElement('button');
-    exampleButton.type = 'button';
-    exampleButton.className = 'btn btn-outline-secondary btn-sm mt-2';
-    exampleButton.innerHTML = '<i class="fas fa-magic me-1"></i> Use Example URL';
-    exampleButton.addEventListener('click', function() {
-        document.getElementById('videoUrl').value = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-    });
-    
-    document.getElementById('videoUrl').parentNode.appendChild(exampleButton);
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Initialize
+    actionSelect.dispatchEvent(new Event('change'));
 });
