@@ -66,54 +66,50 @@
             <div class="card-body">
                 
                 <!-- Video Download Options -->
-                {% if video.formats.video_formats %}
+                {% if video.formats.video %}
                 <h6 class="text-primary">
                     <i class="fas fa-video me-1"></i>
                     Video Formats (MP4)
                 </h6>
                 
-                {% for quality, formats in video.formats.video_formats.items() %}
-                    {% if formats %}
+                {% for format in video.formats.video %}
                     <div class="d-grid gap-2 mb-2">
                         <button class="btn btn-outline-primary btn-sm download-btn" 
                                 data-url="{{ video.webpage_url }}" 
-                                data-quality="{{ quality }}" 
+                                data-quality="{{ format.format_note }}" 
                                 data-audio-only="false">
                             <i class="fas fa-download me-1"></i>
-                            {{ quality }} 
-                            {% if formats[0].filesize %}
-                                ({{ "%.1f"|format(formats[0].filesize / 1024 / 1024) }} MB)
+                            {{ format.format_note }} 
+                            {% if format.filesize %}
+                                ({{ "%.1f"|format(format.filesize / 1024 / 1024) }} MB)
                             {% endif %}
                         </button>
                     </div>
-                    {% endif %}
                 {% endfor %}
                 
                 <hr>
                 {% endif %}
                 
                 <!-- Audio Download Options -->
-                {% if video.formats.audio_formats %}
+                {% if video.formats.audio %}
                 <h6 class="text-success">
                     <i class="fas fa-music me-1"></i>
                     Audio Only (MP3)
                 </h6>
                 
-                {% for bitrate, formats in video.formats.audio_formats.items() %}
-                    {% if formats %}
+                {% for format in video.formats.audio %}
                     <div class="d-grid gap-2 mb-2">
                         <button class="btn btn-outline-success btn-sm download-btn" 
                                 data-url="{{ video.webpage_url }}" 
-                                data-quality="{{ bitrate }}" 
+                                data-quality="{{ format.format_note }}" 
                                 data-audio-only="true">
                             <i class="fas fa-download me-1"></i>
-                            {{ bitrate }}
-                            {% if formats[0].filesize %}
-                                ({{ "%.1f"|format(formats[0].filesize / 1024 / 1024) }} MB)
+                            {{ format.format_note }}
+                            {% if format.filesize %}
+                                ({{ "%.1f"|format(format.filesize / 1024 / 1024) }} MB)
                             {% endif %}
                         </button>
                     </div>
-                    {% endif %}
                 {% endfor %}
                 {% endif %}
                 
