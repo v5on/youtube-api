@@ -31,6 +31,8 @@ document.addEventListener('DOMContentLoaded', function() {
             qualitySelect.innerHTML = `
                 <option value="720p">720p (HD)</option>
                 <option value="1080p">1080p (Full HD)</option>
+                <option value="1440p">1440p (2K)</option>
+                <option value="2160p">2160p (4K)</option>
                 <option value="480p">480p</option>
                 <option value="360p">360p</option>
                 <option value="240p">240p</option>

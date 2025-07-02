@@ -52,6 +52,10 @@ class YouTubeService:
                 audio_formats = []
                 
                 for fmt in formats:
+                    # Skip if format is incomplete
+                    if not fmt.get('url'):
+                        continue
+                        
                     format_info = {
                         'format_id': fmt.get('format_id', ''),
                         'ext': fmt.get('ext', ''),
@@ -71,25 +75,43 @@ class YouTubeService:
                         'protocol': fmt.get('protocol', ''),
                     }
                     
-                    # Categorize formats
+                    # Get codec information
                     vcodec = fmt.get('vcodec', 'none')
                     acodec = fmt.get('acodec', 'none')
                     ext = fmt.get('ext', '')
+                    height = fmt.get('height', 0)
                     
-                    # Only include video+audio combined formats (no video-only formats)
-                    if vcodec != 'none' and acodec != 'none':
-                        # Video with audio combined - this is what we want
-                        if ext in ['mp4', 'webm', 'mkv'] and fmt.get('height', 0) > 0:
+                    # Video+Audio combined formats (legacy formats, usually only 360p available)
+                    if (vcodec != 'none' and vcodec != None and 
+                        acodec != 'none' and acodec != None and
+                        height > 0):
+                        
+                        # Prefer MP4, but also accept WebM
+                        if ext in ['mp4', 'webm']:
                             format_info['type'] = 'video_with_audio'
                             video_formats.append(format_info)
-                    elif vcodec == 'none' and acodec != 'none':
-                        # Audio only formats
-                        if ext in ['mp3', 'm4a', 'webm', 'ogg'] and fmt.get('abr', 0) > 0:
+                            logging.debug(f"Added video+audio format: {fmt.get('format_id')} - {height}p - {ext}")
+                    
+                    # Video-only formats (we'll use these with auto-combined audio)
+                    elif (vcodec != 'none' and vcodec != None and 
+                          (acodec == 'none' or acodec == None) and
+                          height > 0):
+                        
+                        if ext in ['mp4', 'webm']:
+                            format_info['type'] = 'video_only_auto_combine'
+                            video_formats.append(format_info)
+                            logging.debug(f"Added video-only format (will auto-combine with audio): {fmt.get('format_id')} - {height}p - {ext}")
+                    
+                    # Audio-only formats
+                    elif (vcodec == 'none' or vcodec == None) and (acodec != 'none' and acodec != None):
+                        abr = fmt.get('abr', 0)
+                        if abr > 0 and ext in ['mp3', 'm4a', 'webm', 'ogg']:
                             format_info['type'] = 'audio_only'
                             audio_formats.append(format_info)
+                            logging.debug(f"Added audio format: {fmt.get('format_id')} - {abr}kbps - {ext}")
                 
                 # Sort formats by quality
-                video_formats.sort(key=lambda x: x.get('quality', 0), reverse=True)
+                video_formats.sort(key=lambda x: x.get('height', 0), reverse=True)
                 audio_formats.sort(key=lambda x: x.get('abr', 0), reverse=True)
                 
                 # Create quality-based format groups
@@ -98,8 +120,13 @@ class YouTubeService:
                     'audio_formats': self._group_audio_formats(audio_formats)
                 }
                 
+                # Add common video qualities that yt-dlp can automatically combine
+                # even if they're not in the combined formats list
+                available_qualities = ['144p', '240p', '360p', '480p', '720p', '1080p']
+                
                 video_info['formats'] = quality_groups
-                video_info['available_qualities'] = self._get_available_qualities(video_formats)
+                video_info['available_qualities'] = available_qualities
+                video_info['note'] = 'Higher qualities (720p, 1080p) use automatic video+audio combination'
                 
                 return video_info
                 
@@ -115,6 +142,7 @@ class YouTubeService:
         
         for fmt in formats:
             height = fmt.get('height', 0)
+            
             # If height is not available, try to parse from resolution string
             if height == 0:
                 resolution = fmt.get('resolution', '')
@@ -124,9 +152,32 @@ class YouTubeService:
                     except:
                         height = 0
             
+            # Also try to extract from format_note
             if height == 0:
+                format_note = fmt.get('format_note', '').lower()
+                if '144p' in format_note:
+                    height = 144
+                elif '240p' in format_note:
+                    height = 240
+                elif '360p' in format_note:
+                    height = 360
+                elif '480p' in format_note:
+                    height = 480
+                elif '720p' in format_note:
+                    height = 720
+                elif '1080p' in format_note:
+                    height = 1080
+                elif '1440p' in format_note:
+                    height = 1440
+                elif '2160p' in format_note or '4k' in format_note:
+                    height = 2160
+            
+            # Skip if we still can't determine height
+            if height == 0:
+                logging.debug(f"Skipping format {fmt.get('format_id')} - no height info")
                 continue
                 
+            # Group by quality ranges
             if height <= 144:
                 quality_map['144p'].append(fmt)
             elif height <= 240:
@@ -144,8 +195,10 @@ class YouTubeService:
             elif height <= 2160:
                 quality_map['2160p'].append(fmt)
         
-        # Remove empty quality groups
-        return {k: v for k, v in quality_map.items() if v}
+        # Remove empty quality groups and log what we found
+        result = {k: v for k, v in quality_map.items() if v}
+        logging.debug(f"Video quality groups found: {list(result.keys())}")
+        return result
     
     def _group_audio_formats(self, formats):
         """Group audio formats by bitrate"""
@@ -212,9 +265,10 @@ class YouTubeService:
             elif format_id:
                 ydl_opts['format'] = format_id
             else:
-                # Select best format for specified quality
+                # Use yt-dlp's smart format selection to automatically combine best video+audio
                 height = int(quality.replace('p', ''))
-                ydl_opts['format'] = f'best[height<={height}]'
+                # This format string tells yt-dlp to pick the best video <= height with best audio
+                ydl_opts['format'] = f'best[height<={height}]/bestvideo[height<={height}]+bestaudio/best[height<={height}]'
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -258,9 +312,9 @@ class YouTubeService:
             elif format_id:
                 ydl_opts['format'] = format_id
             else:
-                # Select best format for specified quality
+                # Use yt-dlp's smart format selection
                 height = int(quality.replace('p', ''))
-                ydl_opts['format'] = f'best[height<={height}]'
+                ydl_opts['format'] = f'best[height<={height}]/bestvideo[height<={height}]+bestaudio/best[height<={height}]'
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
