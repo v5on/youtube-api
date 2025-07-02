@@ -41,9 +41,14 @@ def index():
     """Main page with API documentation and testing interface"""
     return render_template('index.html')
 
+@app.route('/docs')
+def api_docs():
+    """Complete API documentation page"""
+    return render_template('api_docs.html')
+
 @app.route('/api/video-info', methods=['GET'])
 def get_video_info():
-    """Get detailed video information including available formats"""
+    """Get available MP4 video qualities (144p-1080p+) and MP3 audio qualities (128-320kbps)"""
     try:
         url = request.args.get('url')
         if not url:
@@ -61,7 +66,7 @@ def get_video_info():
                 'success': False
             }), 400
         
-        # Get video information
+        # Get video information - only available qualities
         video_info = youtube_service.get_video_info(url)
         
         return jsonify({
@@ -163,10 +168,8 @@ def get_download_link():
         
         return jsonify({
             'success': True,
-            'download_url': download_url['url'],
-            'filename': download_url['filename'],
-            'filesize': download_url.get('filesize'),
-            'expires_in': '6 hours'
+            'download_url': download_url['download_url'],
+            'quality': download_url['quality']
         })
         
     except Exception as e:

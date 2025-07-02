@@ -93,3 +93,6 @@ Changelog:
 - July 02, 2025. Modified video format filtering to only include video+audio combined formats and audio-only formats (removed video-only formats)
 - July 02, 2025. Added video preview page functionality with embedded YouTube player
 - July 02, 2025. Updated API documentation to reflect GET method usage with query parameters
+- July 02, 2025. Simplified API to focus only on MP4 videos (144p-1080p+) and MP3 audio (128-320kbps)
+- July 02, 2025. Minimized API responses to return only download URL and quality specification
+- July 02, 2025. Created comprehensive GET API documentation page at /docs endpoint
