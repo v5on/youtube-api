@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-download me-2"></i>
+                    YouTube Downloader API
+                </h3>
+            </div>
+            <div class="card-body">
+                <p class="lead">
+                    A powerful REST API for downloading YouTube videos with multiple format options and comprehensive metadata extraction.
+                </p>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-primary bg-opacity-10 border-primary">
+                            <div class="card-body text-center">
+                                <i class="fas fa-video fa-2x text-primary mb-2"></i>
+                                <h5>Multiple Formats</h5>
+                                <p class="small">MP4 from 144p to 1080p</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-success bg-opacity-10 border-success">
+                            <div class="card-body text-center">
+                                <i class="fas fa-music fa-2x text-success mb-2"></i>
+                                <h5>Audio Only</h5>
+                                <p class="small">MP3 128kbps - 320kbps</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-info bg-opacity-10 border-info">
+                            <div class="card-body text-center">
+                                <i class="fas fa-info-circle fa-2x text-info mb-2"></i>
+                                <h5>Rich Metadata</h5>
+                                <p class="small">Title, views, duration, etc.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4" id="api-docs">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-book me-2"></i>
+                    API Documentation
+                </h4>
+            </div>
+            <div class="card-body">
+                
+                <!-- Get Video Info Endpoint -->
+                <div class="card endpoint-card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <span class="badge bg-primary me-2">POST</span>
+                            /api/video-info
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Description:</strong> Get comprehensive video information and available formats.</p>
+                        
+                        <h6>Request Body:</h6>
+                        <div class="code-block">
+{
+    "url": "https://www.youtube.com/watch?v=VIDEO_ID"
+}
+                        </div>
+                        
+                        <h6>Response:</h6>
+                        <div class="code-block">
+{
+    "success": true,
+    "data": {
+        "title": "Video Title",
+        "channel": "Channel Name",
+        "duration": 180,
+        "view_count": 1000000,
+        "like_count": 50000,
+        "thumbnail": "https://...",
+        "formats": {
+            "video_formats": {
+                "720p": [{"format_id": "...", "ext": "mp4", ...}],
+                "1080p": [{"format_id": "...", "ext": "mp4", ...}]
+            },
+            "audio_formats": {
+                "128kbps": [{"format_id": "...", "ext": "mp3", ...}],
+                "192kbps": [{"format_id": "...", "ext": "mp3", ...}]
+            }
+        }
+    }
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Download Video Endpoint -->
+                <div class="card endpoint-card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <span class="badge bg-success me-2">POST</span>
+                            /api/download
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Description:</strong> Download video or audio file directly.</p>
+                        
+                        <h6>Request Body:</h6>
+                        <div class="code-block">
+{
+    "url": "https://www.youtube.com/watch?v=VIDEO_ID",
+    "quality": "720p",           // optional: 144p, 240p, 360p, 480p, 720p, 1080p
+    "audio_only": false,         // optional: true for audio only
+    "format_id": "FORMAT_ID"     // optional: specific format ID
+}
+                        </div>
+                        
+                        <h6>Response:</h6>
+                        <p>Returns the file as a download attachment.</p>
+                    </div>
+                </div>
+
+                <!-- Get Download Link Endpoint -->
+                <div class="card endpoint-card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <span class="badge bg-info me-2">POST</span>
+                            /api/download-link
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Description:</strong> Get direct download URL for video or audio.</p>
+                        
+                        <h6>Request Body:</h6>
+                        <div class="code-block">
+{
+    "url": "https://www.youtube.com/watch?v=VIDEO_ID",
+    "quality": "720p",           // optional
+    "audio_only": false          // optional
+}
+                        </div>
+                        
+                        <h6>Response:</h6>
+                        <div class="code-block">
+{
+    "success": true,
+    "download_url": "https://...",
+    "filename": "video_title.mp4",
+    "filesize": 15728640,
+    "expires_in": "6 hours"
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card" id="test-interface">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-flask me-2"></i>
+                    Test Interface
+                </h4>
+            </div>
+            <div class="card-body">
+                <form id="testForm">
+                    <div class="mb-3">
+                        <label for="videoUrl" class="form-label">YouTube URL:</label>
+                        <input type="url" class="form-control" id="videoUrl" placeholder="https://www.youtube.com/watch?v=..." required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="action" class="form-label">Action:</label>
+                        <select class="form-select" id="action">
+                            <option value="info">Get Video Info</option>
+                            <option value="download-link">Get Download Link</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="qualityGroup">
+                        <label for="quality" class="form-label">Quality:</label>
+                        <select class="form-select" id="quality">
+                            <option value="720p">720p (HD)</option>
+                            <option value="1080p">1080p (Full HD)</option>
+                            <option value="480p">480p</option>
+                            <option value="360p">360p</option>
+                            <option value="240p">240p</option>
+                            <option value="144p">144p</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="audioOnly">
+                            <label class="form-check-label" for="audioOnly">
+                                Audio Only (MP3)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-play me-2"></i>
+                        Test API
+                    </button>
+                </form>
+                
+                <div id="loadingSpinner" class="text-center mt-3 d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Processing request...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4" id="responseCard" style="display: none;">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-code me-2"></i>
+                    API Response
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="responseContent" class="json-response"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
