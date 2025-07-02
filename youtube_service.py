@@ -9,7 +9,7 @@ class YouTubeService:
     def __init__(self):
         self.temp_dir = tempfile.mkdtemp()
         logging.info(f"YouTube service initialized with temp dir: {self.temp_dir}")
-    
+
     def is_valid_youtube_url(self, url):
         """Check if URL is a valid YouTube URL"""
         youtube_regex = re.compile(
@@ -17,7 +17,7 @@ class YouTubeService:
             r'(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})'
         )
         return youtube_regex.match(url) is not None
-    
+
     def get_video_info(self, url):
         """Extract comprehensive video information"""
         try:
@@ -26,10 +26,10 @@ class YouTubeService:
                 'no_warnings': True,
                 'extract_flat': False,
             }
-            
+
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
-                
+
                 # Extract basic video information
                 video_info = {
                     'title': info.get('title', 'Unknown'),
@@ -43,86 +43,157 @@ class YouTubeService:
                     'thumbnail': info.get('thumbnail', ''),
                     'webpage_url': info.get('webpage_url', url),
                     'video_id': info.get('id', ''),
-                    'formats': {
-                        'audio': [],
-                        'video': []
-                    }
+                    'formats': []
                 }
-                
+
                 # Process available formats
                 formats = info.get('formats', [])
-                
-                # Target qualities we want
-                target_video_heights = [360, 480, 720, 1080]
-                
+                video_formats = []
+                audio_formats = []
+
                 for fmt in formats:
+                    format_info = {
+                        'format_id': fmt.get('format_id', ''),
+                        'ext': fmt.get('ext', ''),
+                        'filesize': fmt.get('filesize', 0),
+                        'format_note': fmt.get('format_note', ''),
+                        'url': fmt.get('url', ''),
+                    }
+
+                    # Categorize formats
                     vcodec = fmt.get('vcodec', 'none')
                     acodec = fmt.get('acodec', 'none')
                     ext = fmt.get('ext', '')
-                    height = fmt.get('height', 0)
-                    abr = fmt.get('abr', 0)
-                    format_id = fmt.get('format_id', '')
-                    
-                    # Audio format - 128kbps (look for common audio format IDs)
-                    if vcodec == 'none' and acodec != 'none':
-                        # Common 128kbps format IDs: 250 (webm), 140 (m4a)
-                        if format_id in ['250', '140'] or (120 <= abr <= 135):
-                            audio_format = {
-                                'ext': 'mp3',
-                                'filesize': fmt.get('filesize', 0),
-                                'format_id': format_id,
-                                'format_note': '128kbps',
-                                'type': 'audio_only',
-                                'url': fmt.get('url', '')
-                            }
-                            # Only add one audio format
-                            if not video_info['formats']['audio']:
-                                video_info['formats']['audio'].append(audio_format)
-                    
-                    # Video formats - only specific qualities (video only, no audio)
+
+                    if vcodec != 'none' and acodec != 'none':
+                        # Video with audio - prefer mp4
+                        if ext in ['mp4', 'webm', 'mkv']:
+                            video_formats.append(format_info)
                     elif vcodec != 'none' and acodec == 'none':
-                        if height in target_video_heights and ext == 'mp4':
-                            video_format = {
-                                'ext': 'mp4',
-                                'filesize': fmt.get('filesize', 0),
-                                'format_id': format_id,
-                                'format_note': f'{height}p',
-                                'type': 'video_only',
-                                'url': fmt.get('url', '')
-                            }
-                            video_info['formats']['video'].append(video_format)
-                
-                # Remove duplicates and sort video formats by quality
-                seen_heights = set()
-                unique_video_formats = []
-                for fmt in video_info['formats']['video']:
-                    height = fmt['format_note']
-                    if height not in seen_heights:
-                        seen_heights.add(height)
-                        unique_video_formats.append(fmt)
-                
-                video_info['formats']['video'] = sorted(unique_video_formats, 
-                    key=lambda x: int(x['format_note'].replace('p', '')))
-                
+                        # Video only - can be combined later
+                        if ext in ['mp4', 'webm'] and fmt.get('height', 0) > 0:
+                            format_info['type'] = 'video_only'
+                            video_formats.append(format_info)
+                    elif vcodec == 'none' and acodec != 'none':
+                        # Audio only
+                        if ext in ['mp3', 'm4a', 'webm', 'ogg']:
+                            format_info['type'] = 'audio_only'
+                            audio_formats.append(format_info)
+
+                # Sort formats by quality
+                video_formats.sort(key=lambda x: x.get('quality', 0), reverse=True)
+                audio_formats.sort(key=lambda x: x.get('abr', 0), reverse=True)
+
+                # Create quality-based format groups
+                quality_groups = {
+                    'video_formats': self._group_video_formats(video_formats),
+                    'audio_formats': self._group_audio_formats(audio_formats)
+                }
+
+                video_info['formats'] = quality_groups
+                video_info['available_qualities'] = self._get_available_qualities(video_formats)
+
                 return video_info
-                
+
         except Exception as e:
             logging.error(f"Error extracting video info: {e}")
             raise Exception(f"Failed to extract video information: {str(e)}")
-    
-    
-    
+
+    def _group_video_formats(self, formats):
+        """Group video formats by quality"""
+        quality_map = {
+            '144p': [], '240p': [], '360p': [], '480p': [], '720p': [], '1080p': [], '1440p': [], '2160p': []
+        }
+
+        for fmt in formats:
+            height = fmt.get('height', 0)
+            # If height is not available, try to parse from resolution string
+            if height == 0:
+                resolution = fmt.get('resolution', '')
+                if 'x' in resolution:
+                    try:
+                        height = int(resolution.split('x')[1])
+                    except:
+                        height = 0
+
+            if height == 0:
+                continue
+
+            if height <= 144:
+                quality_map['144p'].append(fmt)
+            elif height <= 240:
+                quality_map['240p'].append(fmt)
+            elif height <= 360:
+                quality_map['360p'].append(fmt)
+            elif height <= 480:
+                quality_map['480p'].append(fmt)
+            elif height <= 720:
+                quality_map['720p'].append(fmt)
+            elif height <= 1080:
+                quality_map['1080p'].append(fmt)
+            elif height <= 1440:
+                quality_map['1440p'].append(fmt)
+            elif height <= 2160:
+                quality_map['2160p'].append(fmt)
+
+        # Remove empty quality groups
+        return {k: v for k, v in quality_map.items() if v}
+
+    def _group_audio_formats(self, formats):
+        """Group audio formats by bitrate"""
+        bitrate_map = {
+            '128kbps': [], '192kbps': [], '256kbps': [], '320kbps': []
+        }
+
+        for fmt in formats:
+            abr = fmt.get('abr', 0)
+            if abr <= 128:
+                bitrate_map['128kbps'].append(fmt)
+            elif abr <= 192:
+                bitrate_map['192kbps'].append(fmt)
+            elif abr <= 256:
+                bitrate_map['256kbps'].append(fmt)
+            else:
+                bitrate_map['320kbps'].append(fmt)
+
+        # Remove empty bitrate groups
+        return {k: v for k, v in bitrate_map.items() if v}
+
+    def _get_available_qualities(self, formats):
+        """Get list of available video qualities"""
+        qualities = set()
+        for fmt in formats:
+            height = fmt.get('height', 0)
+            if height <= 144:
+                qualities.add('144p')
+            elif height <= 240:
+                qualities.add('240p')
+            elif height <= 360:
+                qualities.add('360p')
+            elif height <= 480:
+                qualities.add('480p')
+            elif height <= 720:
+                qualities.add('720p')
+            elif height <= 1080:
+                qualities.add('1080p')
+            elif height <= 1440:
+                qualities.add('1440p')
+            elif height <= 2160:
+                qualities.add('2160p')
+
+        return sorted(list(qualities), key=lambda x: int(x.replace('p', '')))
+
     def download_video(self, url, format_id=None, audio_only=False, quality='720p'):
         """Download video or audio file"""
         try:
             output_path = os.path.join(self.temp_dir, '%(title)s.%(ext)s')
-            
+
             ydl_opts = {
                 'outtmpl': output_path,
                 'quiet': True,
                 'no_warnings': True,
             }
-            
+
             if audio_only:
                 ydl_opts['format'] = 'bestaudio/best'
                 ydl_opts['postprocessors'] = [{
@@ -136,36 +207,36 @@ class YouTubeService:
                 # Select best format for specified quality
                 height = int(quality.replace('p', ''))
                 ydl_opts['format'] = f'best[height<={height}]'
-            
+
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                
+
                 # Find the downloaded file
                 base_filename = ydl.prepare_filename(info)
-                
+
                 # Check for post-processed audio file
                 if audio_only:
                     audio_file = base_filename.rsplit('.', 1)[0] + '.mp3'
                     if os.path.exists(audio_file):
                         base_filename = audio_file
-                
+
                 if not os.path.exists(base_filename):
                     raise Exception("Downloaded file not found")
-                
+
                 return {
                     'success': True,
                     'file_path': base_filename,
                     'filename': os.path.basename(base_filename),
                     'mimetype': 'audio/mpeg' if audio_only else 'video/mp4'
                 }
-                
+
         except Exception as e:
             logging.error(f"Error downloading video: {e}")
             return {
                 'success': False,
                 'error': str(e)
             }
-    
+
     def get_download_url(self, url, format_id=None, audio_only=False, quality='720p'):
         """Get direct download URL for video or audio"""
         try:
@@ -173,7 +244,7 @@ class YouTubeService:
                 'quiet': True,
                 'no_warnings': True,
             }
-            
+
             if audio_only:
                 ydl_opts['format'] = 'bestaudio/best'
             elif format_id:
@@ -182,15 +253,15 @@ class YouTubeService:
                 # Select best format for specified quality
                 height = int(quality.replace('p', ''))
                 ydl_opts['format'] = f'best[height<={height}]'
-            
+
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
-                
+
                 # Get the best format based on criteria
                 formats = info.get('formats', [])
                 if not formats:
                     raise Exception("No formats available")
-                
+
                 # Select the best format
                 selected_format = formats[0]
                 for fmt in formats:
@@ -200,18 +271,18 @@ class YouTubeService:
                     elif not audio_only and fmt.get('vcodec') != 'none':
                         selected_format = fmt
                         break
-                
+
                 # Generate filename
                 title = info.get('title', 'video')
                 title = re.sub(r'[^\w\s-]', '', title).strip()
                 title = re.sub(r'[-\s]+', '-', title)
-                
+
                 ext = selected_format.get('ext', 'mp4')
                 if audio_only:
                     ext = 'mp3'
-                
+
                 filename = f"{title}.{ext}"
-                
+
                 return {
                     'url': selected_format.get('url'),
                     'filename': filename,
@@ -219,7 +290,7 @@ class YouTubeService:
                     'format_id': selected_format.get('format_id'),
                     'quality': selected_format.get('format_note', '')
                 }
-                
+
         except Exception as e:
             logging.error(f"Error getting download URL: {e}")
             raise Exception(f"Failed to get download URL: {str(e)}")
