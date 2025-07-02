@@ -69,19 +69,22 @@
                 {% if video.formats.video %}
                 <h6 class="text-primary">
                     <i class="fas fa-video me-1"></i>
-                    Video Formats (MP4)
+                    Video Formats
                 </h6>
                 
                 {% for format in video.formats.video %}
                     <div class="d-grid gap-2 mb-2">
                         <button class="btn btn-outline-primary btn-sm download-btn" 
                                 data-url="{{ video.webpage_url }}" 
-                                data-quality="{{ format.format_note }}" 
+                                data-quality="{{ format.quality_label }}" 
                                 data-audio-only="false">
                             <i class="fas fa-download me-1"></i>
-                            {{ format.format_note }} 
+                            {{ format.quality_label }} ({{ format.ext }})
+                            {% if format.type == 'video_only' %}
+                                <span class="badge bg-warning">No Audio</span>
+                            {% endif %}
                             {% if format.filesize %}
-                                ({{ "%.1f"|format(format.filesize / 1024 / 1024) }} MB)
+                                <br><small>({{ "%.1f"|format(format.filesize / 1024 / 1024) }} MB)</small>
                             {% endif %}
                         </button>
                     </div>
@@ -94,10 +97,25 @@
                 {% if video.formats.audio %}
                 <h6 class="text-success">
                     <i class="fas fa-music me-1"></i>
-                    Audio Only (MP3)
+                    Audio Only
                 </h6>
                 
                 {% for format in video.formats.audio %}
+                    <div class="d-grid gap-2 mb-2">
+                        <button class="btn btn-outline-success btn-sm download-btn" 
+                                data-url="{{ video.webpage_url }}" 
+                                data-quality="{{ format.quality_label }}" 
+                                data-audio-only="true">
+                            <i class="fas fa-download me-1"></i>
+                            {{ format.quality_label }} ({{ format.ext }})
+                            {% if format.filesize %}
+                                <br><small>({{ "%.1f"|format(format.filesize / 1024 / 1024) }} MB)</small>
+                            {% endif %}
+                        </button>
+                    </div>
+                {% endfor %}
+                
+                {% endif %}
                     <div class="d-grid gap-2 mb-2">
                         <button class="btn btn-outline-success btn-sm download-btn" 
                                 data-url="{{ video.webpage_url }}" 

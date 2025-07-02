@@ -58,40 +58,69 @@ class YouTubeService:
                         'filesize': fmt.get('filesize', 0),
                         'format_note': fmt.get('format_note', ''),
                         'url': fmt.get('url', ''),
+                        'height': fmt.get('height', 0),
+                        'width': fmt.get('width', 0),
+                        'fps': fmt.get('fps', 0),
+                        'abr': fmt.get('abr', 0),
+                        'tbr': fmt.get('tbr', 0)
                     }
 
                     # Categorize formats
                     vcodec = fmt.get('vcodec', 'none')
                     acodec = fmt.get('acodec', 'none')
                     ext = fmt.get('ext', '')
+                    height = fmt.get('height', 0)
 
-                    if vcodec != 'none' and acodec != 'none':
-                        # Video with audio - prefer mp4
-                        if ext in ['mp4', 'webm', 'mkv']:
-                            video_formats.append(format_info)
-                    elif vcodec != 'none' and acodec == 'none':
-                        # Video only - can be combined later
-                        if ext in ['mp4', 'webm'] and fmt.get('height', 0) > 0:
-                            format_info['type'] = 'video_only'
-                            video_formats.append(format_info)
+                    # Video formats (with or without audio)
+                    if vcodec != 'none' and height > 0:
+                        # Clean format note for video
+                        if height <= 144:
+                            format_info['quality_label'] = '144p'
+                        elif height <= 240:
+                            format_info['quality_label'] = '240p'
+                        elif height <= 360:
+                            format_info['quality_label'] = '360p'
+                        elif height <= 480:
+                            format_info['quality_label'] = '480p'
+                        elif height <= 720:
+                            format_info['quality_label'] = '720p'
+                        elif height <= 1080:
+                            format_info['quality_label'] = '1080p'
+                        elif height <= 1440:
+                            format_info['quality_label'] = '1440p'
+                        else:
+                            format_info['quality_label'] = '2160p'
+                        
+                        format_info['type'] = 'video_with_audio' if acodec != 'none' else 'video_only'
+                        video_formats.append(format_info)
+
+                    # Audio formats
                     elif vcodec == 'none' and acodec != 'none':
-                        # Audio only
-                        if ext in ['mp3', 'm4a', 'webm', 'ogg']:
-                            format_info['type'] = 'audio_only'
-                            audio_formats.append(format_info)
+                        abr = fmt.get('abr', 0)
+                        # Clean format note for audio
+                        if abr <= 128:
+                            format_info['quality_label'] = '128kbps'
+                        elif abr <= 192:
+                            format_info['quality_label'] = '192kbps'
+                        elif abr <= 256:
+                            format_info['quality_label'] = '256kbps'
+                        else:
+                            format_info['quality_label'] = '320kbps'
+                        
+                        format_info['type'] = 'audio_only'
+                        audio_formats.append(format_info)
 
-                # Sort formats by quality
-                video_formats.sort(key=lambda x: x.get('quality', 0), reverse=True)
-                audio_formats.sort(key=lambda x: x.get('abr', 0), reverse=True)
+                # Sort video formats by height (quality)
+                video_formats.sort(key=lambda x: x.get('height', 0))
+                
+                # Sort audio formats by bitrate
+                audio_formats.sort(key=lambda x: x.get('abr', 0))
 
-                # Create quality-based format groups
-                quality_groups = {
-                    'video_formats': self._group_video_formats(video_formats),
-                    'audio_formats': self._group_audio_formats(audio_formats)
+                # Group formats
+                video_info['formats'] = {
+                    'video': video_formats,
+                    'audio': audio_formats
                 }
-
-                video_info['formats'] = quality_groups
-                video_info['available_qualities'] = self._get_available_qualities(video_formats)
 
                 return video_info
 
@@ -99,89 +128,7 @@ class YouTubeService:
             logging.error(f"Error extracting video info: {e}")
             raise Exception(f"Failed to extract video information: {str(e)}")
 
-    def _group_video_formats(self, formats):
-        """Group video formats by quality"""
-        quality_map = {
-            '144p': [], '240p': [], '360p': [], '480p': [], '720p': [], '1080p': [], '1440p': [], '2160p': []
-        }
-
-        for fmt in formats:
-            height = fmt.get('height', 0)
-            # If height is not available, try to parse from resolution string
-            if height == 0:
-                resolution = fmt.get('resolution', '')
-                if 'x' in resolution:
-                    try:
-                        height = int(resolution.split('x')[1])
-                    except:
-                        height = 0
-
-            if height == 0:
-                continue
-
-            if height <= 144:
-                quality_map['144p'].append(fmt)
-            elif height <= 240:
-                quality_map['240p'].append(fmt)
-            elif height <= 360:
-                quality_map['360p'].append(fmt)
-            elif height <= 480:
-                quality_map['480p'].append(fmt)
-            elif height <= 720:
-                quality_map['720p'].append(fmt)
-            elif height <= 1080:
-                quality_map['1080p'].append(fmt)
-            elif height <= 1440:
-                quality_map['1440p'].append(fmt)
-            elif height <= 2160:
-                quality_map['2160p'].append(fmt)
-
-        # Remove empty quality groups
-        return {k: v for k, v in quality_map.items() if v}
-
-    def _group_audio_formats(self, formats):
-        """Group audio formats by bitrate"""
-        bitrate_map = {
-            '128kbps': [], '192kbps': [], '256kbps': [], '320kbps': []
-        }
-
-        for fmt in formats:
-            abr = fmt.get('abr', 0)
-            if abr <= 128:
-                bitrate_map['128kbps'].append(fmt)
-            elif abr <= 192:
-                bitrate_map['192kbps'].append(fmt)
-            elif abr <= 256:
-                bitrate_map['256kbps'].append(fmt)
-            else:
-                bitrate_map['320kbps'].append(fmt)
-
-        # Remove empty bitrate groups
-        return {k: v for k, v in bitrate_map.items() if v}
-
-    def _get_available_qualities(self, formats):
-        """Get list of available video qualities"""
-        qualities = set()
-        for fmt in formats:
-            height = fmt.get('height', 0)
-            if height <= 144:
-                qualities.add('144p')
-            elif height <= 240:
-                qualities.add('240p')
-            elif height <= 360:
-                qualities.add('360p')
-            elif height <= 480:
-                qualities.add('480p')
-            elif height <= 720:
-                qualities.add('720p')
-            elif height <= 1080:
-                qualities.add('1080p')
-            elif height <= 1440:
-                qualities.add('1440p')
-            elif height <= 2160:
-                qualities.add('2160p')
-
-        return sorted(list(qualities), key=lambda x: int(x.replace('p', '')))
+    
 
     def download_video(self, url, format_id=None, audio_only=False, quality='720p'):
         """Download video or audio file"""
