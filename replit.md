@@ -96,3 +96,5 @@ Changelog:
 - July 02, 2025. Simplified API to focus only on MP4 videos (144p-1080p+) and MP3 audio (128-320kbps)
 - July 02, 2025. Minimized API responses to return only download URL and quality specification
 - July 02, 2025. Created comprehensive GET API documentation page at /docs endpoint
+- July 02, 2025. Fixed download functionality to provide actual downloadable file URLs
+- July 02, 2025. Installed ffmpeg for video processing and verified MP4/MP3 downloads work correctly

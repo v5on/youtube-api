@@ -234,11 +234,18 @@ class YouTubeService:
                 if not os.path.exists(base_filename):
                     raise Exception("Downloaded file not found")
                 
+                # Determine actual quality from the downloaded file
+                actual_quality = quality
+                if audio_only:
+                    actual_quality = quality.replace('kbps', '') + 'kbps' if 'kbps' in quality else '192kbps'
+                else:
+                    actual_quality = quality.replace('p', '') + 'p' if 'p' in quality else '144p'
+                
                 return {
                     'success': True,
-                    'file_path': base_filename,
-                    'filename': os.path.basename(base_filename),
-                    'mimetype': 'audio/mpeg' if audio_only else 'video/mp4'
+                    'download_url': base_filename,  # This is the local file path
+                    'quality': actual_quality,
+                    'format': 'mp3' if audio_only else 'mp4'
                 }
                 
         except Exception as e:
@@ -249,68 +256,19 @@ class YouTubeService:
             }
     
     def get_download_url(self, url, format_id=None, audio_only=False, quality='720p'):
-        """Get direct download URL for video or audio"""
+        """Get direct download URL for video or audio by actually downloading the file"""
         try:
-            ydl_opts = {
-                'quiet': True,
-                'no_warnings': True,
+            # Download the file first to get a direct downloadable URL
+            download_result = self.download_video(url, format_id, audio_only, quality)
+            
+            if not download_result.get('success'):
+                raise Exception(download_result.get('error', 'Download failed'))
+            
+            # Return the file path as download URL and the quality
+            return {
+                'download_url': download_result['download_url'],
+                'quality': download_result['quality']
             }
-            
-            if audio_only:
-                ydl_opts['format'] = 'bestaudio/best'
-            elif format_id:
-                ydl_opts['format'] = format_id
-            else:
-                # Use yt-dlp's smart format selection
-                height = int(quality.replace('p', ''))
-                ydl_opts['format'] = f'best[height<={height}]/bestvideo[height<={height}]+bestaudio/best[height<={height}]'
-            
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                
-                # Get the best format based on criteria
-                formats = info.get('formats', [])
-                if not formats:
-                    raise Exception("No formats available")
-                
-                # Select the best format
-                selected_format = formats[0]
-                for fmt in formats:
-                    if audio_only and fmt.get('acodec') != 'none':
-                        selected_format = fmt
-                        break
-                    elif not audio_only and fmt.get('vcodec') != 'none':
-                        selected_format = fmt
-                        break
-                
-                # Generate filename
-                title = info.get('title', 'video')
-                title = re.sub(r'[^\w\s-]', '', title).strip()
-                title = re.sub(r'[-\s]+', '-', title)
-                
-                ext = selected_format.get('ext', 'mp4')
-                if audio_only:
-                    ext = 'mp3'
-                
-                filename = f"{title}.{ext}"
-                
-                # Minimal response - only download URL and quality
-                actual_quality = quality
-                if audio_only:
-                    # For audio, show bitrate as quality
-                    abr = selected_format.get('abr')
-                    if abr and abr > 0:
-                        actual_quality = f"{int(abr)}kbps"
-                else:
-                    # For video, show resolution as quality
-                    height = selected_format.get('height')
-                    if height and height > 0:
-                        actual_quality = f"{height}p"
-                
-                return {
-                    'download_url': selected_format.get('url'),
-                    'quality': actual_quality
-                }
                 
         except Exception as e:
             logging.error(f"Error getting download URL: {e}")

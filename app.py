@@ -46,6 +46,47 @@ def api_docs():
     """Complete API documentation page"""
     return render_template('api_docs.html')
 
+@app.route('/download/<file_id>')
+def serve_download_file(file_id):
+    """Serve downloaded file directly"""
+    try:
+        if not hasattr(app, 'temp_files') or file_id not in app.temp_files:
+            return jsonify({
+                'error': 'File not found or expired',
+                'success': False
+            }), 404
+        
+        file_path = app.temp_files[file_id]
+        
+        if not os.path.exists(file_path):
+            return jsonify({
+                'error': 'File no longer exists',
+                'success': False
+            }), 404
+        
+        # Determine the filename and mimetype
+        filename = os.path.basename(file_path)
+        if filename.endswith('.mp3'):
+            mimetype = 'audio/mpeg'
+        elif filename.endswith('.mp4'):
+            mimetype = 'video/mp4'
+        else:
+            mimetype = 'application/octet-stream'
+        
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=filename,
+            mimetype=mimetype
+        )
+        
+    except Exception as e:
+        logging.error(f"Error serving download file: {e}")
+        return jsonify({
+            'error': 'Failed to serve file',
+            'success': False
+        }), 500
+
 @app.route('/api/video-info', methods=['GET'])
 def get_video_info():
     """Get available MP4 video qualities (144p-1080p+) and MP3 audio qualities (128-320kbps)"""
@@ -166,9 +207,22 @@ def get_download_link():
             quality=quality
         )
         
+        # Generate a unique file ID for serving the file
+        file_path = download_url['download_url']
+        file_id = os.path.basename(file_path)
+        
+        # Store file path in session or simple dict for serving
+        if not hasattr(app, 'temp_files'):
+            app.temp_files = {}
+        app.temp_files[file_id] = file_path
+        
+        # Create downloadable URL
+        base_url = request.url_root.rstrip('/')
+        downloadable_url = f"{base_url}/download/{file_id}"
+        
         return jsonify({
             'success': True,
-            'download_url': download_url['download_url'],
+            'download_url': downloadable_url,
             'quality': download_url['quality']
         })
         
