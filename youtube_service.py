@@ -46,6 +46,9 @@ class YouTubeService:
                     }
                 }
 
+                # Track (quality_label + type) combinations already added
+                existing_video_formats = set()
+
                 formats = info.get('formats', [])
                 for fmt in formats:
                     url = fmt.get('url')
@@ -59,15 +62,26 @@ class YouTubeService:
                     ext = fmt.get('ext')
 
                     if vcodec != 'none' and height:
+                        if ext == 'webm':
+                            continue
+
                         quality = f"{height}p"
+                        ftype = 'video_with_audio' if acodec != 'none' else 'video_only'
+                        key = (quality, ftype)
+
+                        if key in existing_video_formats:
+                            continue
+                        existing_video_formats.add(key)
+
                         video_info['formats']['video'].append({
                             'format_id': fmt.get('format_id'),
                             'url': url,
                             'ext': ext,
                             'filesize': fmt.get('filesize'),
                             'quality_label': quality,
-                            'type': 'video_with_audio' if acodec != 'none' else 'video_only'
+                            'type': ftype
                         })
+
                     elif vcodec == 'none' and acodec != 'none':
                         audio_ext = 'm4a' if 'm4a' in ext else 'mp3'
                         quality_label = f"{abr}kbps" if abr else 'audio'
@@ -146,4 +160,3 @@ class YouTubeService:
         except Exception as e:
             logging.error(f"Error downloading video: {e}")
             return {'success': False, 'error': str(e)}
-
